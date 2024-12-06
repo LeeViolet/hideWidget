@@ -36,11 +36,13 @@ private:
     MyGlobalShortCut *globalShortCut = nullptr;
     QSystemTrayIcon *m_sysTrayIcon;
     bool setConnect();
+    bool isTray = false;
 
 private slots:
     void rec_testShotCutAns();
     void do_chooseExe();
     void do_setHotKey();
+    void do_exit();
     void on_btnMini_clicked();
     void on_btnRemoveExe_clicked();
     void on_btnClearExe_clicked();

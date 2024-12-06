@@ -78,7 +78,8 @@ MainWindow::MainWindow(QWidget *parent)
         }
     });
     connect(m_showMainAction, &QAction::triggered, this, &MainWindow::show);
-    connect(m_exitAppAction, &QAction::triggered, this, &MainWindow::close);
+    // connect(m_exitAppAction, &QAction::triggered, this, &MainWindow::close);
+    connect(m_exitAppAction, SIGNAL(triggered()), this, SLOT(do_exit()));
     m_sysTrayIcon->show();
 
     connect(ui->btnChoseExe, SIGNAL(clicked()), this, SLOT(do_chooseExe()));
@@ -121,6 +122,7 @@ void MainWindow::rec_testShotCutAns()
 void MainWindow::do_chooseExe()
 {
     QString name = QFileDialog::getOpenFileName(this, "选择应用程序", QDir::rootPath(), "应用程序 (*.exe)");
+    if (name.isEmpty()) return;
     name = name.replace("/", "\\");
     // 检查是否已选择程序
     QStringList list = m_model->stringList();
@@ -193,11 +195,17 @@ bool MainWindow::setConnect()
     return true;
 }
 
+void MainWindow::do_exit()
+{
+    isTray = true;
+    close();
+}
+
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    event->ignore();
-    if (this->isHidden())
+    if (isTray)
     {
+        event->accept();
         QApplication::quit();
         return;
     }
@@ -212,12 +220,15 @@ void MainWindow::closeEvent(QCloseEvent *event)
     msgBox.exec();
     if (msgBox.clickedButton() == closeBtn)
     {
-        this->close();
+        event->accept();
+        // QApplication::quit();
+        return;
     }
     else if (msgBox.clickedButton() == miniBtn)
     {
         this->hide();
     }
+    event->ignore();
 }
 
 
