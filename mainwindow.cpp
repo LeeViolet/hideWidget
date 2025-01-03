@@ -8,9 +8,9 @@
 #include <QMessageBox>
 #include <QListWidgetItem>
 
-QStringList MainWindow::files = QStringList();
 std::vector<HWND> MainWindow::handlers = std::vector<HWND>();
 QStringListModel *MainWindow::m_model = nullptr;
+QStringListModel *MainWindow::temp_model = nullptr;
 
 
 WINBOOL MainWindow::EnumAllWindows(HWND hwnd, LPARAM)
@@ -125,8 +125,7 @@ void MainWindow::do_chooseExe()
     if (name.isEmpty()) return;
     name = name.replace("/", "\\");
     // 检查是否已选择程序
-    QStringList list = m_model->stringList();
-    if (list.contains(name)) return;
+    if (m_model->stringList().contains(name) || temp_model->stringList().contains(name)) return;
     m_model->insertRow(m_model->rowCount());
     QModelIndex index = m_model->index(m_model->rowCount()-1,0);
     m_model->setData(index, name, Qt::DisplayRole);
@@ -147,11 +146,15 @@ void MainWindow::readIni()
         hotKey = hot;
         ui->keySequenceEdit->setKeySequence(hotKey);
     }
-    files = setting->value("ini/files").toStringList();
+    QStringList files = setting->value("ini/files").toStringList();
     // 模型-视图
     m_model = new QStringListModel(this);
     m_model->setStringList(files);
     ui->listView->setModel(m_model);
+    files = setting->value("ini/temp_files").toStringList();
+    temp_model = new QStringListModel(this);
+    temp_model->setStringList(files);
+    ui->tempListView->setModel(temp_model);
     delete setting;
     if (setConnect())
     {
@@ -231,23 +234,77 @@ void MainWindow::closeEvent(QCloseEvent *event)
     event->ignore();
 }
 
-
+// 删除程序
 void MainWindow::on_btnRemoveExe_clicked()
 {
     QModelIndex index = ui->listView->currentIndex();
-    if (index.row() == -1) return;
-    m_model->removeRow(index.row());
+    QModelIndex temp_index = ui->tempListView->currentIndex();
+    QStringListModel *model = nullptr;
+    QString conf = nullptr;
+    if (index.row() != -1)
+    {
+        model = m_model;
+        conf = "ini/files";
+    }
+    else if (temp_index.row() != -1)
+    {
+        model = temp_model;
+        conf = "ini/temp_files";
+    }
+    else
+    {
+        return;
+    }
+    model->removeRow(index.row());
     QSettings *setting = new QSettings("config.ini", QSettings::IniFormat);
-    setting->setValue("ini/files", m_model->stringList());
+    setting->setValue(conf, m_model->stringList());
     delete setting;
 }
 
-
+// 清空程序
 void MainWindow::on_btnClearExe_clicked()
 {
     m_model->removeRows(0, m_model->rowCount());
+    temp_model->removeRows(0, temp_model->rowCount());
     QSettings *setting = new QSettings("config.ini", QSettings::IniFormat);
     setting->remove("ini/files");
+    setting->remove("ini/temp_files");
+    delete setting;
+}
+
+// 上移程序
+void MainWindow::on_btnUp_clicked()
+{
+    QModelIndex index = ui->tempListView->currentIndex();
+    if (index.row() == -1) return;
+    QString name = temp_model->data(index).toString();
+    temp_model->removeRow(index.row());
+    m_model->insertRow(m_model->rowCount());
+    index = m_model->index(m_model->rowCount()-1);
+    m_model->setData(index, name, Qt::DisplayRole);
+    ui->listView->setCurrentIndex(index);
+    // 保存 ini 文件
+    QSettings *setting = new QSettings("config.ini", QSettings::IniFormat);
+    setting->setValue("ini/files", m_model->stringList());
+    setting->setValue("ini/temp_files", temp_model->stringList());
+    delete setting;
+}
+
+// 下移程序
+void MainWindow::on_btnDown_clicked()
+{
+    QModelIndex index = ui->listView->currentIndex();
+    if (index.row() == -1) return;
+    QString name = m_model->data(index).toString();
+    m_model->removeRow(index.row());
+    temp_model->insertRow(0);
+    index = temp_model->index(0, 0);
+    temp_model->setData(index, name, Qt::DisplayRole);
+    ui->tempListView->setCurrentIndex(index);
+    // 保存 ini 文件
+    QSettings *setting = new QSettings("config.ini", QSettings::IniFormat);
+    setting->setValue("ini/files", m_model->stringList());
+    setting->setValue("ini/temp_files", temp_model->stringList());
     delete setting;
 }
 

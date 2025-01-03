@@ -23,8 +23,8 @@ public:
     ~MainWindow();
     WINBOOL static EnumAllWindows(HWND hwnd, LPARAM p);
     std::vector<HWND> static handlers;
-    QStringList static files;
     QStringListModel static *m_model;
+    QStringListModel static *temp_model;
 
 protected:
     void closeEvent(QCloseEvent *event);
@@ -46,6 +46,8 @@ private slots:
     void on_btnMini_clicked();
     void on_btnRemoveExe_clicked();
     void on_btnClearExe_clicked();
+    void on_btnUp_clicked();
+    void on_btnDown_clicked();
 };
 
 
